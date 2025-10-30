@@ -1,9 +1,8 @@
-# backend/Dockerfile
 FROM eclipse-temurin:17-jdk-jammy AS build
 WORKDIR /workspace
-COPY pom.xml mvnw ./
-COPY .mvn .mvn
-COPY src src
+COPY task_api/pom.xml task_api/mvnw ./
+COPY task_api/.mvn .mvn
+COPY task_api/src task_api/src
 RUN chmod +x mvnw
 RUN ./mvnw -B -DskipTests package
 

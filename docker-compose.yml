@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  backend:
+    build: ./task_api
+    container_name: task-backend
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+
+  frontend:
+    build: ./task-frontend
+    container_name: task-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
