@@ -1,21 +1,21 @@
-name: 1. Deploy to GCP VM (SSH Method)
+name: 1. Deploy to GCP VM (Automated CI/CD)
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:
   deploy-vm:
     runs-on: ubuntu-latest
     
-    # Environment variables based on previously confirmed values
+    # Environment variables based on your secrets (VM_HOST, VM_USER) and paths
     env:
-      VM_HOST: ${{ secrets.VM_HOST }}        # External IP of your VM
-      VM_USER: ${{ secrets.VM_USER }}        # gehan
-      JAR_PATH: /opt/task_api/              # VM destination path for backend
-      FRONTEND_PATH: /var/www/task-frontend/ # VM destination path for frontend
+      VM_HOST: ${{ secrets.VM_HOST }}        
+      VM_USER: ${{ secrets.VM_USER }}        
+      JAR_DEST_PATH: /opt/task_api/          
+      FRONTEND_DEST_PATH: /var/www/task-frontend/ 
 
     steps:
     - uses: actions/checkout@v4
@@ -27,11 +27,12 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
     - name: Build Spring Boot JAR
-      # Run from the correct nested directory, skipping tests
+      # Runs Maven from the correct nested directory, skipping tests
       run: mvn clean install -DskipTests
       working-directory: ./task_api/task_api 
     - name: Define JAR filename
       id: jar_name
+      # Sets an output variable pointing to the built JAR file path
       run: echo "JAR_FILE=task_api/task_api/target/task_api-0.0.1-SNAPSHOT.jar" >> $GITHUB_OUTPUT
       
     # 2. Build Frontend (React)
@@ -40,41 +41,43 @@ jobs:
       with:
         node-version: '18'
     - name: Install and Build React App
+      # Runs npm build to generate the /build folder with the corrected relative API path
       run: |
         npm install
         npm run build
       working-directory: ./task-frontend
 
-    # 3. Setup SSH for Deployment
-    - name: Install SSH Key
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        known_hosts: 'placeholder-to-avoid-stale-keys' # Using placeholder for simpler setup
-
-    # 4. Deployment (Copy Files)
+    # --- NO FAILING SSH KEY INSTALL STEP IS NEEDED HERE ---
+        
+    # 3. Deployment (Copy Files via appleboy/scp-action)
     - name: Copy Backend JAR to VM
-      run: |
-        scp -o StrictHostKeyChecking=no -r ${{ steps.jar_name.outputs.JAR_FILE }} ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.JAR_PATH }}
-
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ env.VM_HOST }}
+        username: ${{ env.VM_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
+        source: ${{ steps.jar_name.outputs.JAR_FILE }}
+        target: ${{ env.JAR_DEST_PATH }}
+        
     - name: Copy Frontend Build to VM
-      run: |
-        scp -o StrictHostKeyChecking=no -r ./task-frontend/build/* ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.FRONTEND_PATH }}
-
-    # 5. Restart Backend Service via SSH
-    - name: Restart Spring Boot service
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ env.VM_HOST }}
+        username: ${{ env.VM_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
+        source: ./task-frontend/build/*
+        target: ${{ env.FRONTEND_DEST_PATH }}
+        
+    # 4. Execute Remote Deployment Script and Restart Services
+    - name: Run Deploy Script on VM
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ env.VM_HOST }}
         username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
         script: |
-          # Ensure both directories exist with correct permissions 
-          sudo mkdir -p ${{ env.JAR_PATH }}
-          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.JAR_PATH }}
-          sudo mkdir -p ${{ env.FRONTEND_PATH }}
-          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.FRONTEND_PATH }}
-          
-          # Restart the service to load the new JAR
-          sudo systemctl restart task-api
-          echo "Deployment complete. Task API restarted."
+          # The script is assumed to be at /opt/deploy.sh and handles all logic
+          /opt/deploy.sh
+          # Final status checks
+          sudo systemctl status task-api --no-pager
+          sudo systemctl status nginx --no-pager
