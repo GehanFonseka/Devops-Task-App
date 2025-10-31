@@ -14,7 +14,7 @@ jobs:
       VM_HOST: ${{ secrets.VM_HOST }}
       VM_USER: ${{ secrets.VM_USER }}
       JAR_DEST_PATH: /opt/task_api/
-      FRONTEND_DEST_PATH: /home/${{ secrets.VM_USER }}/task-frontend/
+      FRONTEND_DEST_PATH: /var/www/task-frontend/
 
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
           npm run build
         working-directory: ./task-frontend
 
-      # 3️⃣ Prepare VM Directories (fix permission issue)
+      # 3️⃣ Prepare VM Directories (with correct Nginx permissions)
       - name: Prepare Directories on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -55,7 +55,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             sudo mkdir -p ${{ env.JAR_DEST_PATH }}
-            mkdir -p ${{ env.FRONTEND_DEST_PATH }}
+            sudo mkdir -p ${{ env.FRONTEND_DEST_PATH }}
             sudo chown -R $USER:$USER ${{ env.FRONTEND_DEST_PATH }}
             sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
@@ -69,7 +69,7 @@ jobs:
           source: ${{ steps.jar_name.outputs.JAR_FILE }}
           target: ${{ env.JAR_DEST_PATH }}
 
-      # 5️⃣ Copy Frontend Build (now safe)
+      # 5️⃣ Copy Frontend Build (to Nginx path)
       - name: Copy Frontend Build to VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -79,7 +79,7 @@ jobs:
           source: ./task-frontend/build/*
           target: ${{ env.FRONTEND_DEST_PATH }}
 
-      # 6️⃣ Restart Services
+      # 6️⃣ Restart Services & Fix Ownership
       - name: Run Deploy Script on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -87,6 +87,17 @@ jobs:
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            /opt/deploy.sh
+            # Run your deploy script (Spring Boot restart)
+            sudo /opt/deploy.sh
+            
+            # Ensure Nginx can serve frontend
+            sudo chown -R www-data:www-data /var/www/task-frontend
+            sudo chmod -R 755 /var/www/task-frontend
+            
+            # Restart services
             sudo systemctl restart nginx || true
+            sudo systemctl restart task-api || true
+            
+            # Show status for debug
+            sudo systemctl status nginx --no-pager || true
             sudo systemctl status task-api --no-pager || true
