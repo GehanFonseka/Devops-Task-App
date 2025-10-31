@@ -1,0 +1,80 @@
+name: 1. Deploy to GCP VM (SSH Method)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  deploy-vm:
+    runs-on: ubuntu-latest
+    
+    # Environment variables based on previously confirmed values
+    env:
+      VM_HOST: ${{ secrets.VM_HOST }}        # External IP of your VM
+      VM_USER: ${{ secrets.VM_USER }}        # gehan
+      JAR_PATH: /opt/task_api/              # VM destination path for backend
+      FRONTEND_PATH: /var/www/task-frontend/ # VM destination path for frontend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # 1. Build Backend (Spring Boot)
+    - name: Set up Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Build Spring Boot JAR
+      # Run from the correct nested directory, skipping tests
+      run: mvn clean install -DskipTests
+      working-directory: ./task_api/task_api 
+    - name: Define JAR filename
+      id: jar_name
+      run: echo "JAR_FILE=task_api/task_api/target/task_api-0.0.1-SNAPSHOT.jar" >> $GITHUB_OUTPUT
+      
+    # 2. Build Frontend (React)
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    - name: Install and Build React App
+      run: |
+        npm install
+        npm run build
+      working-directory: ./task-frontend
+
+    # 3. Setup SSH for Deployment
+    - name: Install SSH Key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: 'placeholder-to-avoid-stale-keys' # Using placeholder for simpler setup
+
+    # 4. Deployment (Copy Files)
+    - name: Copy Backend JAR to VM
+      run: |
+        scp -o StrictHostKeyChecking=no -r ${{ steps.jar_name.outputs.JAR_FILE }} ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.JAR_PATH }}
+
+    - name: Copy Frontend Build to VM
+      run: |
+        scp -o StrictHostKeyChecking=no -r ./task-frontend/build/* ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.FRONTEND_PATH }}
+
+    # 5. Restart Backend Service via SSH
+    - name: Restart Spring Boot service
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ env.VM_HOST }}
+        username: ${{ env.VM_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Ensure both directories exist with correct permissions 
+          sudo mkdir -p ${{ env.JAR_PATH }}
+          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.JAR_PATH }}
+          sudo mkdir -p ${{ env.FRONTEND_PATH }}
+          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.FRONTEND_PATH }}
+          
+          # Restart the service to load the new JAR
+          sudo systemctl restart task-api
+          echo "Deployment complete. Task API restarted."

@@ -12,7 +12,7 @@ const TaskList = () => {
         const fetchTasks = async () => {
             try {
                 // Ensure your backend is running on http://localhost:8080
-                const response = await axios.get('http://localhost:8080/api/tasks'); 
+                const response = await axios.get('/api/tasks'); 
                 setTasks(response.data);
             } catch (err) {
                 setError(err.message);
