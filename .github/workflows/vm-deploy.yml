@@ -54,21 +54,21 @@ jobs:
     - name: Setup Remote Directories and Clean Frontend
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ env.VM_HOST }}
-        username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        # ... authentication details ...
         script: |
-          # Create backend and frontend directories
+          # Create directories
           sudo mkdir -p ${{ env.JAR_DEST_DIR }}
           sudo mkdir -p ${{ env.FRONTEND_DEST_DIR }}
           
-          # Set ownership for the copy steps
-          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.JAR_DEST_DIR }}
-          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.FRONTEND_DEST_DIR }}
+          # CRITICAL FIX 1: Frontend directory ownership set to NGINX user (www-data)
+          sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_DIR }}
           
-          # Force clean the frontend directory to avoid old file conflicts (CRITICAL)
-          rm -rf ${{ env.FRONTEND_DEST_DIR }}/*
-
+          # Keep backend directory owned by SSH user for simpler access/management
+          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.JAR_DEST_DIR }}
+          
+          # Force clean the frontend directory to avoid old file conflicts (Still needed)
+          sudo rm -rf ${{ env.FRONTEND_DEST_DIR }}/*
+          
     # 4. Deployment (Copy Files into the now-empty directories)
     - name: Copy Backend JAR to VM
       uses: appleboy/scp-action@v0.1.7
