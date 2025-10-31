@@ -67,17 +67,31 @@ jobs:
             sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
 
       # 6️⃣ Copy React build directly into frontend root (avoid nested folder)
-      - name: Copy React build
+      - name: Copy React build to temp folder
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ./task-frontend/build/
-          target: ${{ env.FRONTEND_DEST_PATH }}
+          target: /home/${{ env.VM_USER }}/frontend-temp/
           overwrite: true
           tar_exec: tar
           port: 22
+
+          # 7️⃣ Move temp frontend build to final folder with sudo
+      - name: Move React build to /var/www/task-frontend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
+            sudo mv /home/${{ env.VM_USER }}/frontend-temp/* ${{ env.FRONTEND_DEST_PATH }}/
+            sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
+            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
       # 7️⃣ Fix frontend permissions to www-data
       - name: Fix frontend ownership
