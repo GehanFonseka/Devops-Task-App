@@ -36,7 +36,7 @@ const TaskList = () => {
     if (error) {
         return (
             <div className="task-list-container">
-                <p className="status-message status-error">Error fetching tasks: {error}</p>
+                <p className="status-message status-error">Error fetsks: {error}</p>
             </div>
         );
     }
