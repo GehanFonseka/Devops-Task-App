@@ -97,7 +97,7 @@ jobs:
         username: ${{ env.VM_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # RUNS THE SCRIPT WHICH INCLUDES THE FINAL PERMISSION SWITCH
+          # The script includes the mandatory final permission switch for Nginx
           /opt/deploy.sh
           
           # Final status checks
