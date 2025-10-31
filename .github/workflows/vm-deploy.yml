@@ -39,8 +39,8 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Clean Frontend Directories (CRITICAL FIX)
-      # Ensures all old build artifacts and node modules are removed for a fresh build
+    - name: Clean Frontend Directories (Local Fix)
+      # Ensures all old build artifacts are removed for a fresh build
       run: rm -rf node_modules package-lock.json build
       working-directory: ./task-frontend
       
@@ -50,29 +50,27 @@ jobs:
         npm run build
       working-directory: ./task-frontend
 
-    # 3. Remote Setup (Ensure Directories are Ready and Cleaned)
-    - name: Setup Remote Directories and Clean Frontend
+    # 3. Remote Setup: Prepare directories for the SCP copy operation
+    - name: Setup Remote Directories and Grant Write Access
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ env.VM_HOST }}
         username: ${{ env.VM_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # Create backend and frontend directories
+          # 1. Create directories using sudo
           sudo mkdir -p ${{ env.JAR_DEST_DIR }}
           sudo mkdir -p ${{ env.FRONTEND_DEST_DIR }}
           
-          # CRITICAL FIX: Use $VM_USER shell variable for chown command
-          # Set ownership for the copy steps
-          sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_DIR }}
-          
-          # Keep backend directory owned by SSH user (now using $VM_USER)
+          # 2. GRANT WRITE PERMISSIONS TO GEHAN (CRITICAL FIX)
+          # 'gehan' user must own the directories to copy files into them.
+          sudo chown -R $VM_USER:$VM_USER ${{ env.FRONTEND_DEST_DIR }}
           sudo chown -R $VM_USER:$VM_USER ${{ env.JAR_DEST_DIR }}
           
-          # Force clean the frontend directory to avoid old file conflicts
+          # 3. Force clean the directory before copy (removes old file hash conflicts)
           sudo rm -rf ${{ env.FRONTEND_DEST_DIR }}/*
 
-    # 4. Deployment (Copy Files into the now-empty directories)
+    # 4. Deployment (Copy Files into the prepared directories)
     - name: Copy Backend JAR to VM
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -99,7 +97,7 @@ jobs:
         username: ${{ env.VM_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # The service restart logic is contained in the remote script
+          # RUNS THE SCRIPT WHICH INCLUDES THE FINAL PERMISSION SWITCH
           /opt/deploy.sh
           
           # Final status checks
