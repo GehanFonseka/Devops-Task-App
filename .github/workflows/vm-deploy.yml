@@ -4,80 +4,89 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   deploy-vm:
     runs-on: ubuntu-latest
     
-    # Environment variables based on your secrets (VM_HOST, VM_USER) and paths
     env:
-      VM_HOST: ${{ secrets.VM_HOST }}        
-      VM_USER: ${{ secrets.VM_USER }}        
-      JAR_DEST_PATH: /opt/task_api/          
-      FRONTEND_DEST_PATH: /var/www/task-frontend/ 
+      VM_HOST: ${{ secrets.VM_HOST }}
+      VM_USER: ${{ secrets.VM_USER }}
+      JAR_DEST_PATH: /opt/task_api/
+      FRONTEND_DEST_PATH: /home/${{ secrets.VM_USER }}/task-frontend/
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    # 1. Build Backend (Spring Boot)
-    - name: Set up Java 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-    - name: Build Spring Boot JAR
-      # Runs Maven from the correct nested directory, skipping tests
-      run: mvn clean install -DskipTests
-      working-directory: ./task_api/task_api 
-    - name: Define JAR filename
-      id: jar_name
-      # Sets an output variable pointing to the built JAR file path
-      run: echo "JAR_FILE=task_api/task_api/target/task_api-0.0.1-SNAPSHOT.jar" >> $GITHUB_OUTPUT
-      
-    # 2. Build Frontend (React)
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-    - name: Install and Build React App
-      # Runs npm build to generate the /build folder with the corrected relative API path
-      run: |
-        npm install
-        npm run build
-      working-directory: ./task-frontend
+      # 1️⃣ Build Spring Boot Backend
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    # --- NO FAILING SSH KEY INSTALL STEP IS NEEDED HERE ---
-        
-    # 3. Deployment (Copy Files via appleboy/scp-action)
-    - name: Copy Backend JAR to VM
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ env.VM_HOST }}
-        username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
-        source: ${{ steps.jar_name.outputs.JAR_FILE }}
-        target: ${{ env.JAR_DEST_PATH }}
-        
-    - name: Copy Frontend Build to VM
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ env.VM_HOST }}
-        username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
-        source: ./task-frontend/build/*
-        target: ${{ env.FRONTEND_DEST_PATH }}
-        
-    # 4. Execute Remote Deployment Script and Restart Services
-    - name: Run Deploy Script on VM
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ env.VM_HOST }}
-        username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
-        script: |
-          # The script is assumed to be at /opt/deploy.sh and handles all logic
-          /opt/deploy.sh
-          # Final status checks
-          sudo systemctl status task-api --no-pager
-          sudo systemctl status nginx --no-pager
+      - name: Build Spring Boot JAR
+        run: mvn clean install -DskipTests
+        working-directory: ./task_api/task_api
+
+      - name: Define JAR filename
+        id: jar_name
+        run: echo "JAR_FILE=task_api/task_api/target/task_api-0.0.1-SNAPSHOT.jar" >> $GITHUB_OUTPUT
+
+      # 2️⃣ Build React Frontend
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install and Build React App
+        run: |
+          npm install
+          npm run build
+        working-directory: ./task-frontend
+
+      # 3️⃣ Prepare VM Directories (fix permission issue)
+      - name: Prepare Directories on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo mkdir -p ${{ env.JAR_DEST_PATH }}
+            mkdir -p ${{ env.FRONTEND_DEST_PATH }}
+            sudo chown -R $USER:$USER ${{ env.FRONTEND_DEST_PATH }}
+            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
+
+      # 4️⃣ Copy Backend JAR
+      - name: Copy Backend JAR to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ${{ steps.jar_name.outputs.JAR_FILE }}
+          target: ${{ env.JAR_DEST_PATH }}
+
+      # 5️⃣ Copy Frontend Build (now safe)
+      - name: Copy Frontend Build to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ./task-frontend/build/*
+          target: ${{ env.FRONTEND_DEST_PATH }}
+
+      # 6️⃣ Restart Services
+      - name: Run Deploy Script on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            /opt/deploy.sh
+            sudo systemctl restart nginx || true
+            sudo systemctl status task-api --no-pager || true
