@@ -28,7 +28,7 @@ const TaskList = () => {
     if (loading) {
         return (
             <div className="task-list-container">
-                <p className="status-message status-loading">Loading tasks...</p>
+                <p className="status-message status-loading">LoadingGG tasks...</p>
             </div>
         );
     }
