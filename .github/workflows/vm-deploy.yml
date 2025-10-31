@@ -78,7 +78,8 @@ jobs:
           overwrite: true
           tar_exec: tar
           port: 22
-
+          strip_components: 0 
+          
           # Move React build to final folder safely
       - name: Deploy React build to /var/www/task-frontend
         uses: appleboy/ssh-action@v1.0.3
@@ -88,16 +89,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # Remove old files only if temp build exists
-            if [ -d /home/${{ env.VM_USER }}/frontend-temp/ ]; then
-              sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
-              sudo mv /home/${{ env.VM_USER }}/frontend-temp/* ${{ env.FRONTEND_DEST_PATH }}/
-              sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
-              sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
-            else
-              echo "Temp build folder missing! Deployment aborted."
-              exit 1
-            fi
+            sudo mkdir -p ${{ env.FRONTEND_DEST_PATH }}
+            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
+            sudo cp -r /home/${{ env.VM_USER }}/frontend-temp/* ${{ env.FRONTEND_DEST_PATH }}/
+            sudo cp -r /home/${{ env.VM_USER }}/frontend-temp/.* ${{ env.FRONTEND_DEST_PATH }}/ || true
+            sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
+            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
+            sudo rm -rf /home/${{ env.VM_USER }}/frontend-temp
 
       # 7️⃣ Fix frontend permissions to www-data
       - name: Fix frontend ownership
