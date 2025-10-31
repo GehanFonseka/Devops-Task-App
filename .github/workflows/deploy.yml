@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -22,36 +19,39 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H 34.68.235.166 >> ~/.ssh/known_hosts
-          cat ~/.ssh/known_hosts
       
-      - name: Copy files to VM
-        run: |
-          rsync -avz \
-            --exclude='.git*' \
-            --exclude='node_modules' \
-            --exclude='target' \
-            --exclude='.github' \
-            ./ gehan@34.68.235.166:/var/www/task-app/Devops-Task-App/
-      
-      - name: Build and deploy Docker containers
+      - name: Deploy via Git Pull (No file copying needed!)
         run: |
           ssh gehan@34.68.235.166 << 'ENDSSH'
             cd /var/www/task-app/Devops-Task-App
-            echo "Stopping existing containers..."
+            
+            echo "Checking disk space..."
+            df -h | grep /dev/root
+            
+            echo "Cleaning Docker to free space..."
+            docker system prune -f
+            
+            echo "Pulling latest code..."
+            git pull origin main
+            
+            echo "Stopping containers..."
             docker-compose down
+            
             echo "Building containers..."
             docker-compose build --no-cache
+            
             echo "Starting containers..."
             docker-compose up -d
+            
             echo "Container status:"
             docker-compose ps
-            echo "Backend logs:"
-            docker logs task-backend --tail 20
+            
+            echo "Disk space after deployment:"
+            df -h | grep /dev/root
           ENDSSH
       
       - name: Verify deployment
         run: |
-          echo "Waiting for services to start..."
           sleep 10
-          ssh gehan@34.68.235.166 "curl -f http://localhost:8080/api/tasks || echo 'Backend not ready yet'"
-          echo "Deployment complete! Check http://34.68.235.166/"
+          ssh gehan@34.68.235.166 "curl -f http://localhost:8080/api/tasks || echo 'Backend starting...'"
+          echo "✅ Deployment complete! http://34.68.235.166/"
