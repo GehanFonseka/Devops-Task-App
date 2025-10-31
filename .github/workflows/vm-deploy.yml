@@ -14,8 +14,8 @@ jobs:
     env:
       VM_HOST: ${{ secrets.VM_HOST }}        
       VM_USER: ${{ secrets.VM_USER }}        
-      JAR_DEST_PATH: /opt/task_api/          
-      FRONTEND_DEST_PATH: /var/www/task-frontend/ 
+      JAR_DEST_DIR: /opt/task_api/          
+      FRONTEND_DEST_DIR: /var/www/task-frontend/ 
 
     steps:
     - uses: actions/checkout@v4
@@ -27,12 +27,10 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
     - name: Build Spring Boot JAR
-      # Runs Maven from the correct nested directory, skipping tests
       run: mvn clean install -DskipTests
       working-directory: ./task_api/task_api 
     - name: Define JAR filename
       id: jar_name
-      # Sets an output variable pointing to the built JAR file path
       run: echo "JAR_FILE=task_api/task_api/target/task_api-0.0.1-SNAPSHOT.jar" >> $GITHUB_OUTPUT
       
     # 2. Build Frontend (React)
@@ -41,53 +39,67 @@ jobs:
       with:
         node-version: '18'
 
-    # >>> CRITICAL FIX FOR STALE CODE/CSS <<<
-    - name: Clean Frontend Directories
-      # Removes all cache and previous build folders to guarantee a fresh copy
+    - name: Clean Frontend Directories (CRITICAL FIX)
+      # Ensures all old build artifacts and node modules are removed for a fresh build
       run: rm -rf node_modules package-lock.json build
       working-directory: ./task-frontend
       
     - name: Install and Build React App
-      # Runs npm build to generate the /build folder with the corrected relative API path
       run: |
         npm install
         npm run build
       working-directory: ./task-frontend
 
-    # 3. Deployment (Copy Files via appleboy/scp-action)
+    # 3. Remote Setup (Ensure Directories are Ready and Cleaned)
+    - name: Setup Remote Directories and Clean Frontend
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ env.VM_HOST }}
+        username: ${{ env.VM_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Create backend and frontend directories
+          sudo mkdir -p ${{ env.JAR_DEST_DIR }}
+          sudo mkdir -p ${{ env.FRONTEND_DEST_DIR }}
+          
+          # Set ownership for the copy steps
+          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.JAR_DEST_DIR }}
+          sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.FRONTEND_DEST_DIR }}
+          
+          # Force clean the frontend directory to avoid old file conflicts (CRITICAL)
+          rm -rf ${{ env.FRONTEND_DEST_DIR }}/*
+
+    # 4. Deployment (Copy Files into the now-empty directories)
     - name: Copy Backend JAR to VM
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ env.VM_HOST }}
         username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: ${{ steps.jar_name.outputs.JAR_FILE }}
-        target: ${{ env.JAR_DEST_PATH }}
+        target: ${{ env.JAR_DEST_DIR }}
         
     - name: Copy Frontend Build to VM
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ env.VM_HOST }}
         username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
-        # Note: We copy the contents (*), not the folder itself, to put files directly into /var/www/task-frontend/
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        # Copy contents *into* the directory, overwriting is now reliable
         source: ./task-frontend/build/*
-        target: ${{ env.FRONTEND_DEST_PATH }}
+        target: ${{ env.FRONTEND_DEST_DIR }}
         
-    # 4. Execute Remote Deployment Script and Restart Services
+    # 5. Execute Remote Deployment Script and Restart Services
     - name: Run Deploy Script on VM
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ env.VM_HOST }}
         username: ${{ env.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # 1. Runs the comprehensive script to restart services
-          /opt/deploy.sh 
+          # The service restart logic is contained in the remote script
+          /opt/deploy.sh
           
-          # 2. Manual Nginx restart to ensure cache is cleared and new files are served
-          sudo systemctl restart nginx
-          
-          # 3. Final status checks
+          # Final status checks
           sudo systemctl status task-api --no-pager
           sudo systemctl status nginx --no-pager
