@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-
       - name: Build React App
         run: |
           npm install
@@ -38,41 +37,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-
       - name: Build Spring Boot JAR
         run: mvn clean package -DskipTests
         working-directory: ./task_api/task_api
 
-      # 4️⃣ Ensure frontend folder exists with correct permissions
-      - name: Ensure frontend folder exists
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ env.VM_HOST }}
-          username: ${{ env.VM_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 10m
-          script: |
-            sudo mkdir -p ${{ env.FRONTEND_DEST_PATH }}
-            sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.FRONTEND_DEST_PATH }}
-            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
-
-      # 5️⃣ Clean old frontend build (prevent leftover files)
-      - name: Clean old frontend build
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ env.VM_HOST }}
-          username: ${{ env.VM_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 10m
-          script: |
-            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
-
-      # 6️⃣ Copy React build to VM
-      - name: Copy React build
+      # 4️⃣ Copy frontend build and fix permissions
+      - name: Deploy React Build to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
@@ -81,12 +51,11 @@ jobs:
           source: ./task-frontend/build/
           target: ${{ env.FRONTEND_DEST_PATH }}
           overwrite: true
-          rm: false
+          rm: true
           tar_exec: tar
           port: 22
 
-      # 7️⃣ Fix frontend ownership to www-data
-      - name: Fix frontend ownership
+      - name: Fix ownership of frontend
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
@@ -97,9 +66,10 @@ jobs:
           command_timeout: 10m
           script: |
             sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
+            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
-      # 8️⃣ Copy Spring Boot JAR to VM
-      - name: Copy Spring Boot JAR
+      # 5️⃣ Copy Spring Boot JAR
+      - name: Copy Spring Boot JAR to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
@@ -110,7 +80,7 @@ jobs:
           overwrite: true
           port: 22
 
-      # 9️⃣ Restart services
+      # 6️⃣ Restart services
       - name: Restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
