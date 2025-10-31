@@ -1,13 +1,12 @@
-name: 1. Deploy to GCP VM (Automated CI/CD)
+name: Deploy React + Spring Boot to VM
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  deploy-vm:
+  deploy:
     runs-on: ubuntu-latest
 
     env:
@@ -17,66 +16,55 @@ jobs:
       FRONTEND_DEST_PATH: /var/www/task-frontend/
 
     steps:
-      - name: Checkout Code
+      # 1️⃣ Checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 1️⃣ Build Spring Boot Backend
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Build Spring Boot JAR
-        run: mvn clean install -DskipTests
-        working-directory: ./task_api/task_api
-
-      - name: Define JAR filename
-        id: jar_name
-        run: echo "JAR_FILE=task_api/task_api/target/task_api-0.0.1-SNAPSHOT.jar" >> $GITHUB_OUTPUT
-
-      # 2️⃣ Build React Frontend
-      - name: Set up Node.js
+      # 2️⃣ Build React
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-
-      - name: Install and Build React App
+          node-version: 18
+      - name: Build React App
         run: |
           npm install
           npm run build
         working-directory: ./task-frontend
 
-      # 3️⃣ Prepare VM Directories and Fix Permissions
-      - name: Prepare Directories on VM
+      # 3️⃣ Build Spring Boot
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build Spring Boot JAR
+        run: mvn clean package -DskipTests
+        working-directory: ./task_api/task_api
+
+      # 4️⃣ Ensure frontend folder exists with correct permissions
+      - name: Ensure frontend folder exists
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Backend directory
-            sudo mkdir -p ${{ env.JAR_DEST_PATH }}
-            sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.JAR_DEST_PATH }}
-
-            # Frontend directory
             sudo mkdir -p ${{ env.FRONTEND_DEST_PATH }}
-            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
-            sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
+            sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.FRONTEND_DEST_PATH }}
             sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
-      # 4️⃣ Copy Backend JAR
-      - name: Copy Backend JAR to VM
-        uses: appleboy/scp-action@v0.1.7
+      # 5️⃣ Clean old frontend build (prevent leftover files)
+      - name: Clean old frontend build
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ${{ steps.jar_name.outputs.JAR_FILE }}
-          target: ${{ env.JAR_DEST_PATH }}
+          script: |
+            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
 
-      # 5️⃣ Copy Frontend Build (React) to VM
-      - name: Copy Frontend Build to VM
+      # 6️⃣ Copy React build to VM
+      - name: Copy React build
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
@@ -84,23 +72,31 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ./task-frontend/build/
           target: ${{ env.FRONTEND_DEST_PATH }}
+          overwrite: true
+          rm: false
+          tar_exec: tar
 
-      # 6️⃣ Restart Services & Fix Ownership
-      - name: Restart Services on VM
+      # 7️⃣ Fix frontend ownership to www-data
+      - name: Fix frontend ownership
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Ensure frontend ownership/permissions
             sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
-            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
-            # Restart backend (Spring Boot) and frontend (Nginx)
-            sudo systemctl restart task-api || true
-            sudo systemctl restart nginx || true
+      # 8️⃣ Copy Spring Boot JAR to VM
+      - name: Copy Spring Boot JAR
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ./task_api/task_api/target/*.jar
+          target: ${{ env.JAR_DEST_PATH }}
+          overwrite: true
 
-            # Optional: show status for debug
-            sudo systemctl status task-api --no-pager || true
-            sudo systemctl status nginx --no-pager || true
+      # 9️⃣ Restart services
+      - name: Restart services
+        uses: appleboy/ssh-action@v1.0.3
