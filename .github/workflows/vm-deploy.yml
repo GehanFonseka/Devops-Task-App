@@ -40,6 +40,13 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+
+    # >>> CRITICAL FIX FOR STALE CODE/CSS <<<
+    - name: Clean Frontend Directories
+      # Removes all cache and previous build folders to guarantee a fresh copy
+      run: rm -rf node_modules package-lock.json build
+      working-directory: ./task-frontend
+      
     - name: Install and Build React App
       # Runs npm build to generate the /build folder with the corrected relative API path
       run: |
@@ -47,8 +54,6 @@ jobs:
         npm run build
       working-directory: ./task-frontend
 
-    # --- NO FAILING SSH KEY INSTALL STEP IS NEEDED HERE ---
-        
     # 3. Deployment (Copy Files via appleboy/scp-action)
     - name: Copy Backend JAR to VM
       uses: appleboy/scp-action@v0.1.7
@@ -65,6 +70,7 @@ jobs:
         host: ${{ env.VM_HOST }}
         username: ${{ env.VM_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
+        # Note: We copy the contents (*), not the folder itself, to put files directly into /var/www/task-frontend/
         source: ./task-frontend/build/*
         target: ${{ env.FRONTEND_DEST_PATH }}
         
@@ -76,8 +82,12 @@ jobs:
         username: ${{ env.VM_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }} # Authenticates using the private key secret
         script: |
-          # The script is assumed to be at /opt/deploy.sh and handles all logic
-          /opt/deploy.sh
-          # Final status checks
+          # 1. Runs the comprehensive script to restart services
+          /opt/deploy.sh 
+          
+          # 2. Manual Nginx restart to ensure cache is cleared and new files are served
+          sudo systemctl restart nginx
+          
+          # 3. Final status checks
           sudo systemctl status task-api --no-pager
           sudo systemctl status nginx --no-pager
