@@ -12,37 +12,62 @@ jobs:
     env:
       VM_HOST: ${{ secrets.VM_HOST }}
       VM_USER: ${{ secrets.VM_USER }}
-      JAR_DEST_PATH: /opt/task_api/
+      JAR_DEST_PATH: /opt/task-api/
       FRONTEND_DEST_PATH: /var/www/task-frontend/
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Build React
+      # 2️⃣ Build React frontend
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
+
       - name: Build React App
         run: |
           npm install
           npm run build
         working-directory: ./task-frontend
 
-      # 3️⃣ Build Spring Boot
+      # 3️⃣ Build Spring Boot backend
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+
       - name: Build Spring Boot JAR
         run: mvn clean package -DskipTests
         working-directory: ./task_api/task_api
 
-      # 4️⃣ Copy frontend build and fix permissions
-      - name: Deploy React Build to VM
+      # 4️⃣ Ensure frontend folder exists
+      - name: Ensure frontend folder exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            sudo mkdir -p ${{ env.FRONTEND_DEST_PATH }}
+            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
+
+      # 5️⃣ Remove old frontend files (but keep folder)
+      - name: Clean old frontend build
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
+
+      # 6️⃣ Copy React build directly into frontend root (avoid nested folder)
+      - name: Copy React build
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
@@ -51,25 +76,34 @@ jobs:
           source: ./task-frontend/build/
           target: ${{ env.FRONTEND_DEST_PATH }}
           overwrite: true
-          rm: true
           tar_exec: tar
           port: 22
 
-      - name: Fix ownership of frontend
+      # 7️⃣ Fix frontend permissions to www-data
+      - name: Fix frontend ownership
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          timeout: 30s
-          command_timeout: 10m
           script: |
             sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
-            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
-      # 5️⃣ Copy Spring Boot JAR
-      - name: Copy Spring Boot JAR to VM
+      # 8️⃣ Ensure backend folder exists
+      - name: Ensure backend folder exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            sudo mkdir -p ${{ env.JAR_DEST_PATH }}
+            sudo chmod -R 755 ${{ env.JAR_DEST_PATH }}
+
+      # 9️⃣ Copy Spring Boot JAR to VM
+      - name: Copy Spring Boot JAR
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
@@ -80,16 +114,17 @@ jobs:
           overwrite: true
           port: 22
 
-      # 6️⃣ Restart services
-      - name: Restart services
+      # 🔟 Fix JAR ownership & restart backend
+      - name: Fix JAR permissions and restart backend
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          timeout: 30s
-          command_timeout: 10m
           script: |
+            sudo chown root:root ${{ env.JAR_DEST_PATH }}/*.jar
+            sudo chmod 644 ${{ env.JAR_DEST_PATH }}/*.jar
+            sudo systemctl daemon-reload
             sudo systemctl restart task-api
             sudo systemctl restart nginx
