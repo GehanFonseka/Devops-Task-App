@@ -28,7 +28,7 @@ const TaskList = () => {
     if (loading) {
         return (
             <div className="task-list-container">
-                <p className="status-message status-loading">LoadingGG tasks...</p>
+                <p className="status-message status-loading">LoadingG tasks...</p>
             </div>
         );
     }
@@ -44,7 +44,7 @@ const TaskList = () => {
     return (
         // Apply the main container class here
         <div className="task-list-container">
-            <h1>My Tasks</h1>
+            <h1>My Tasksss</h1>
             {/* Apply the list class here */}
             <ul className="task-list">
                 {tasks.map(task => (

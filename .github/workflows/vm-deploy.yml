@@ -9,7 +9,7 @@ on:
 jobs:
   deploy-vm:
     runs-on: ubuntu-latest
-    
+
     env:
       VM_HOST: ${{ secrets.VM_HOST }}
       VM_USER: ${{ secrets.VM_USER }}
@@ -46,7 +46,7 @@ jobs:
           npm run build
         working-directory: ./task-frontend
 
-      # 3️⃣ Prepare VM Directories (with correct Nginx permissions)
+      # 3️⃣ Prepare VM Directories
       - name: Prepare Directories on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -54,9 +54,13 @@ jobs:
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # Backend directory
             sudo mkdir -p ${{ env.JAR_DEST_PATH }}
+            # Frontend directory
             sudo mkdir -p ${{ env.FRONTEND_DEST_PATH }}
-            sudo chown -R $USER:$USER ${{ env.FRONTEND_DEST_PATH }}
+            
+            # Make sure Nginx can read files
+            sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
             sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
       # 4️⃣ Copy Backend JAR
@@ -69,35 +73,32 @@ jobs:
           source: ${{ steps.jar_name.outputs.JAR_FILE }}
           target: ${{ env.JAR_DEST_PATH }}
 
-      # 5️⃣ Copy Frontend Build (to Nginx path)
+      # 5️⃣ Copy Frontend Build (React) to VM
       - name: Copy Frontend Build to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ./task-frontend/build/*
+          source: ./task-frontend/build/
           target: ${{ env.FRONTEND_DEST_PATH }}
 
       # 6️⃣ Restart Services & Fix Ownership
-      - name: Run Deploy Script on VM
+      - name: Restart Services on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Run your deploy script (Spring Boot restart)
-            sudo /opt/deploy.sh
-            
-            # Ensure Nginx can serve frontend
+            # Ensure ownership/permissions
             sudo chown -R www-data:www-data /var/www/task-frontend
             sudo chmod -R 755 /var/www/task-frontend
-            
-            # Restart services
-            sudo systemctl restart nginx || true
+
+            # Restart backend and frontend
             sudo systemctl restart task-api || true
-            
-            # Show status for debug
-            sudo systemctl status nginx --no-pager || true
+            sudo systemctl restart nginx || true
+
+            # Optional: show status for debug
             sudo systemctl status task-api --no-pager || true
+            sudo systemctl status nginx --no-pager || true
