@@ -44,7 +44,8 @@ const TaskList = () => {
     return (
         // Apply the main container class here
         <div className="task-list-container">
-            <h1>My Tasksgdyuyuvc</h1>
+            <h1>My Tasksgdyuyuvyfryc</h1>
+            <h2>Task List</h2>
             {/* Apply the list class here */}
             <ul className="task-list">
                 {tasks.map(task => (
