@@ -109,3 +109,4 @@ jobs:
             # Optional: show status for debug
             sudo systemctl status task-api --no-pager || true
             sudo systemctl status nginx --no-pager || true
+            
