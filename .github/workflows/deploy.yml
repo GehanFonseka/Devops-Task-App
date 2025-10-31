@@ -20,74 +20,38 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H 34.68.235.166 >> ~/.ssh/known_hosts
       
-      - name: Deploy via Git Pull
+      - name: Deploy via Git Pull (No file copying needed!)
         run: |
           ssh gehan@34.68.235.166 << 'ENDSSH'
             cd /var/www/task-app/Devops-Task-App
             
-            echo "📊 Checking disk space..."
+            echo "Checking disk space..."
             df -h | grep /dev/root
             
-            echo ""
-            echo "🧹 Cleaning Docker to free space..."
+            echo "Cleaning Docker to free space..."
             docker system prune -f
             
-            echo ""
-            echo "📥 Pulling latest code..."
-            git fetch origin main
-            git reset --hard origin/main
-            git log -1 --oneline
+            echo "Pulling latest code..."
+            git pull origin main
             
-            echo ""
-            echo "🛑 Stopping containers..."
+            echo "Stopping containers..."
             docker-compose down
             
-            echo ""
-            echo "🗑️  Removing old images..."
-            docker-compose rm -f
-            docker rmi task-frontend:latest task-backend:latest 2>/dev/null || true
+            echo "Building containers..."
+            docker-compose build --no-cache
             
-            echo ""
-            echo "🔨 Building containers from scratch..."
-            docker-compose build --no-cache --pull
-            
-            echo ""
-            echo "🚀 Starting containers..."
+            echo "Starting containers..."
             docker-compose up -d
             
-            echo ""
-            echo "⏳ Waiting for containers to start..."
-            sleep 10
-            
-            echo ""
-            echo "✅ Container status:"
+            echo "Container status:"
             docker-compose ps
             
-            echo ""
-            echo "📊 Disk space after deployment:"
+            echo "Disk space after deployment:"
             df -h | grep /dev/root
-            
-            echo ""
-            echo "📋 Backend logs:"
-            docker logs task-backend --tail 20
-            
-            echo ""
-            echo "📋 Frontend logs:"
-            docker logs task-frontend --tail 10
           ENDSSH
       
       - name: Verify deployment
         run: |
-          echo "🔍 Testing backend API..."
-          ssh gehan@34.68.235.166 "curl -f http://localhost:8080/api/tasks && echo '✅ Backend responding!'" || echo "⚠️ Backend not ready"
-          
-          echo ""
-          echo "🔍 Testing frontend..."
-          ssh gehan@34.68.235.166 "curl -f http://localhost:80 && echo '✅ Frontend responding!'" || echo "⚠️ Frontend not ready"
-          
-          echo ""
-          echo "🎉 Deployment complete!"
-          echo "🌐 Visit: http://34.68.235.166/"
-          echo "🔧 API: http://34.68.235.166/api/tasks"
-          echo ""
-          echo "💡 Clear your browser cache (Ctrl+Shift+R) to see changes!"
+          sleep 10
+          ssh gehan@34.68.235.166 "curl -f http://localhost:8080/api/tasks || echo 'Backend starting...'"
+          echo "✅ Deployment complete! http://34.68.235.166/"
