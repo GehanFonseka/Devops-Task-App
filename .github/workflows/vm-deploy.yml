@@ -46,24 +46,20 @@ jobs:
           npm run build
         working-directory: ./task-frontend
 
-      # 3️⃣ Prepare VM Directories & clean frontend
-      - name: Prepare VM Directories & Clean Frontend
+      # 3️⃣ Prepare VM Directories
+      - name: Prepare Directories on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VM_HOST }}
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Backend directory
             sudo mkdir -p ${{ env.JAR_DEST_PATH }}
-            # Frontend directory
             sudo mkdir -p ${{ env.FRONTEND_DEST_PATH }}
 
-            # Remove old frontend build to prevent tar conflicts
-            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
-
-            # Fix ownership for VM user
-            sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} ${{ env.FRONTEND_DEST_PATH }}
+            # Set initial permissions for Nginx
+            sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
+            sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
       # 4️⃣ Copy Backend JAR
       - name: Copy Backend JAR to VM
@@ -75,7 +71,18 @@ jobs:
           source: ${{ steps.jar_name.outputs.JAR_FILE }}
           target: ${{ env.JAR_DEST_PATH }}
 
-      # 5️⃣ Copy Frontend Build (React) to VM
+      # 5️⃣ Clean Frontend Folder on VM
+      - name: Clean Frontend Folder on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo rm -rf ${{ env.FRONTEND_DEST_PATH }}/*
+            sudo chown -R ${{ env.VM_USER }}: ${{ env.VM_USER }} ${{ env.FRONTEND_DEST_PATH }}
+
+      # 6️⃣ Copy Frontend Build to VM
       - name: Copy Frontend Build to VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -85,7 +92,7 @@ jobs:
           source: ./task-frontend/build/
           target: ${{ env.FRONTEND_DEST_PATH }}
 
-      # 6️⃣ Restart Services & Fix Ownership
+      # 7️⃣ Restart Services & Fix Ownership
       - name: Restart Services on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -93,11 +100,9 @@ jobs:
           username: ${{ env.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Ensure Nginx can read frontend
             sudo chown -R www-data:www-data ${{ env.FRONTEND_DEST_PATH }}
             sudo chmod -R 755 ${{ env.FRONTEND_DEST_PATH }}
 
-            # Restart backend and frontend
             sudo systemctl restart task-api || true
             sudo systemctl restart nginx || true
 
