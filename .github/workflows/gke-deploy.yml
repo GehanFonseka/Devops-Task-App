@@ -1,0 +1,85 @@
+name: CI/CD to GKE
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  BACKEND_IMAGE: gehanfonseka/devops-task-backend
+  FRONTEND_IMAGE: gehanfonseka/devops-task-frontend
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push backend
+        run: |
+          docker build -t $BACKEND_IMAGE:${{ env.IMAGE_TAG }} -t $BACKEND_IMAGE:latest ./task_api
+          docker push $BACKEND_IMAGE:${{ env.IMAGE_TAG }}
+          docker push $BACKEND_IMAGE:latest
+
+      - name: Build and push frontend
+        run: |
+          docker build -t $FRONTEND_IMAGE:${{ env.IMAGE_TAG }} -t $FRONTEND_IMAGE:latest ./task-frontend
+          docker push $FRONTEND_IMAGE:${{ env.IMAGE_TAG }}
+          docker push $FRONTEND_IMAGE:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (k8s manifests)
+        uses: actions/checkout@v4
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.VM_SSH_KEY }}
+
+      - name: Set up gcloud + kubectl
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: 'gke-gcloud-auth-plugin,kubectl'
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/
+
+      - name: Update images to immutable tag
+        run: |
+          # Update deployments to use the freshly built images tagged with the commit SHA
+          kubectl set image deployment/task-backend backend=$BACKEND_IMAGE:${{ env.IMAGE_TAG }} --record
+          kubectl set image deployment/task-frontend frontend=$FRONTEND_IMAGE:${{ env.IMAGE_TAG }} --record
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/task-backend --timeout=120s || (kubectl describe deployment task-backend && exit 1)
+          kubectl rollout status deployment/task-frontend --timeout=120s || (kubectl describe deployment task-frontend && exit 1)
+
+      - name: Show ingress
+        run: |
+          kubectl get ingress -o wide
+
+## Secrets required (configure in repo settings -> Secrets and variables -> Actions)
+## - DOCKER_USERNAME, DOCKER_PASSWORD
+## - GCP_SA_KEY (JSON of a service account with roles/container.admin + viewer on the project)
+## - GCP_PROJECT (e.g., my-gcp-project)
+## - GKE_CLUSTER (e.g., my-cluster)
+## - GKE_LOCATION (e.g., us-central1 or us-central1-a)

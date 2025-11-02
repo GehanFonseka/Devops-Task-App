@@ -15,7 +15,9 @@ public class WebConfig implements WebMvcConfigurer {
                     "http://localhost",
                     "http://127.0.0.1",
                     "http://35.226.182.20",
+                    "http://34.120.238.124",
                     "https://35.226.182.20"
+
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")         // ✅ allow all headers

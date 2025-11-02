@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task-frontend
+  template:
+    metadata:
+      labels:
+        app: task-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: gehanfonseka/devops-task-frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              # REDUCED CPU REQUEST
+              cpu: "50m"
+              # REDUCED MEMORY REQUEST
+              memory: "128Mi"
+            limits:
+              cpu: "100m"
+              memory: "256Mi"
