@@ -9,6 +9,10 @@ env:
   FRONTEND_IMAGE: gehanfonseka/devops-task-frontend
   IMAGE_TAG: ${{ github.sha }}
 
+concurrency:
+  group: gke-deploy
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -24,14 +28,14 @@ jobs:
 
       - name: Build and push backend
         run: |
-          docker build -t $BACKEND_IMAGE:${{ env.IMAGE_TAG }} -t $BACKEND_IMAGE:latest ./task_api
-          docker push $BACKEND_IMAGE:${{ env.IMAGE_TAG }}
+          docker build -t $BACKEND_IMAGE:$IMAGE_TAG -t $BACKEND_IMAGE:latest ./task_api
+          docker push $BACKEND_IMAGE:$IMAGE_TAG
           docker push $BACKEND_IMAGE:latest
 
       - name: Build and push frontend
         run: |
-          docker build -t $FRONTEND_IMAGE:${{ env.IMAGE_TAG }} -t $FRONTEND_IMAGE:latest ./task-frontend
-          docker push $FRONTEND_IMAGE:${{ env.IMAGE_TAG }}
+          docker build -t $FRONTEND_IMAGE:$IMAGE_TAG -t $FRONTEND_IMAGE:latest ./task-frontend
+          docker push $FRONTEND_IMAGE:$IMAGE_TAG
           docker push $FRONTEND_IMAGE:latest
 
   deploy:
@@ -65,8 +69,14 @@ jobs:
       - name: Update images to immutable tag
         run: |
           # Update deployments to use the freshly built images tagged with the commit SHA
-          kubectl set image deployment/task-backend backend=$BACKEND_IMAGE:${{ env.IMAGE_TAG }} --record
-          kubectl set image deployment/task-frontend frontend=$FRONTEND_IMAGE:${{ env.IMAGE_TAG }} --record
+          kubectl set image deployment/task-backend backend=$BACKEND_IMAGE:$IMAGE_TAG --record
+          kubectl set image deployment/task-frontend frontend=$FRONTEND_IMAGE:$IMAGE_TAG --record
+
+      - name: Force rollout (safety)
+        run: |
+          # If the image tag was identical for some reason, force a rollout to pick up latest
+          kubectl rollout restart deployment/task-backend || true
+          kubectl rollout restart deployment/task-frontend || true
 
       - name: Wait for rollout
         run: |
