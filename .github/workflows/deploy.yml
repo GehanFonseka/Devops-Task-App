@@ -49,9 +49,9 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H 35.226.182.20 >> ~/.ssh/known_hosts
-          # Optional: Create the target directory if it doesn't exist
-          ssh gehan@35.226.182.20 "mkdir -p /var/www/task-app/Devops-Task-App"
-
+          # You can remove the line below since you ran it manually
+          # ssh gehan@35.226.182.20 "sudo mkdir -p /var/www/task-app/Devops-Task-App"
+          
       - name: Transfer docker-compose.yml
         run: |
           scp ./docker-compose.yml gehan@35.226.182.20:/var/www/task-app/Devops-Task-App/docker-compose.yml
