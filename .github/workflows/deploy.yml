@@ -37,32 +37,45 @@ jobs:
     needs: docker
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3 # NEEDED to access docker-compose.yml
+
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.VM_SSH_KEY }}
 
-      - name: Add VM to known hosts
+      - name: Add VM to known hosts & Create Remote Directory
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H 35.226.182.20 >> ~/.ssh/known_hosts
+          # Optional: Create the target directory if it doesn't exist
+          ssh gehan@35.226.182.20 "mkdir -p /var/www/task-app/Devops-Task-App"
 
-      - name: Deploy via SSH (pull images and restart)
+      - name: Transfer docker-compose.yml
+        run: |
+          scp ./docker-compose.yml gehan@35.226.182.20:/var/www/task-app/Devops-Task-App/docker-compose.yml
+
+      - name: Deploy via SSH (Pull images and restart)
         run: |
           ssh gehan@35.226.182.20 << 'ENDSSH'
             set -e
             cd /var/www/task-app/Devops-Task-App
-            echo "Repository status:" && git rev-parse --short HEAD || true
-
+            
             echo "Stopping containers..."
-            docker-compose down || true
+            # FIXED: Used 'docker compose' (V2 syntax)
+            docker compose down || true 
 
             echo "Pulling latest images..."
-            docker-compose pull
+            # FIXED: Used 'docker compose' (V2 syntax)
+            # Docker login is often needed here for private registries
+            docker compose pull 
 
             echo "Starting containers..."
-            docker-compose up -d
+            # FIXED: Used 'docker compose' (V2 syntax)
+            docker compose up -d
 
             echo "Container status:"
-            docker-compose ps
+            # FIXED: Used 'docker compose' (V2 syntax)
+            docker compose ps
           ENDSSH
