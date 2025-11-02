@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   backend:
     image: gehanfonseka/devops-task-backend:latest
@@ -8,9 +10,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test:
-        - CMD-SHELL
-        - bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' || exit 1
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' || exit 1'"]
       interval: 10s
       timeout: 3s
       retries: 5
