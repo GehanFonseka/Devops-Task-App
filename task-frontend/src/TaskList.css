@@ -14,6 +14,7 @@
     --completed-color: #a0aec0; /* Light gray for completed text */
     --success-color: #38a169; /* Green for success/checkmarks */
     --error-color: #e53e3e; /* Red for errors */
+    --accent-shadow: 0 12px 30px rgba(44, 82, 130, 0.12);
 }
 
 body {
@@ -30,10 +31,15 @@ body {
     background-color: var(--card-color);
     
     /* Modern shadow (subtle lift) */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--accent-shadow);
     border-radius: 16px;
     font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    transition: all 0.3s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.task-list-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
 }
 
 /* 2. Typography and Headings */
@@ -90,7 +96,7 @@ body {
     margin-bottom: 8px;
     font-size: 1.1rem;
     color: var(--text-color);
-    transition: background-color 0.2s, box-shadow 0.2s;
+    transition: background-color 0.2s, box-shadow 0.2s, transform 0.06s ease-in;
 }
 
 /* Enhanced Hover effect */
@@ -98,6 +104,7 @@ body {
     background-color: var(--background-color);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     cursor: default;
+    transform: translateY(-1px);
 }
 
 /* 5. State-specific Styles */
@@ -111,7 +118,7 @@ body {
     border-radius: 50%;
     border: 2px solid var(--primary-color);
     margin-right: 15px;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, background-color 0.3s, color 0.3s;
 }
 
 /* Completed Task Style */
@@ -138,4 +145,34 @@ body {
 /* Keep the hover effect clean for the last item */
 .task-item:last-child {
     border-bottom: none;
+}
+
+/* Primary action button */
+.task-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.btn-primary {
+    appearance: none;
+    border: none;
+    background: linear-gradient(135deg, var(--secondary-color), #2b6cb0);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    box-shadow: 0 8px 20px rgba(44, 82, 130, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(44, 82, 130, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 16px rgba(44, 82, 130, 0.22);
 }

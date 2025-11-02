@@ -17,6 +17,15 @@ const TaskList = () => {
             try {
                 // Build API base:
                 // - If running CRA dev server (port 3000), call backend at localhost:8080
+                    <div className="task-actions">
+                        <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={() => setTasks(prev => prev.map(t => ({ ...t, completed: true })))}
+                        >
+                            Mark all completed
+                        </button>
+                    </div>
                 // - Otherwise (Docker/Nginx on port 80/other), use same-origin so Nginx proxies /api
                 const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 const isCRADev = isLocalHost && window.location.port === '3000';
