@@ -80,8 +80,14 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          kubectl rollout status deployment/task-backend --timeout=120s || (kubectl describe deployment task-backend && exit 1)
-          kubectl rollout status deployment/task-frontend --timeout=120s || (kubectl describe deployment task-frontend && exit 1)
+          echo "⏳ Waiting up to 5 minutes for backend rollout..."
+          kubectl rollout status deployment/task-backend --timeout=300s || (kubectl describe deployment task-backend && exit 1)
+          echo "✅ Backend rolled out successfully."
+
+          echo "⏳ Waiting up to 5 minutes for frontend rollout..."
+          kubectl rollout status deployment/task-frontend --timeout=300s || (kubectl describe deployment task-frontend && exit 1)
+          echo "✅ Frontend rolled out successfully."   
+
 
       - name: Show ingress
         run: |
