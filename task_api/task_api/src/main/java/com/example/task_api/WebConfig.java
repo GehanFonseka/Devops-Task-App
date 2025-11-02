@@ -9,8 +9,16 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**") // Allow CORS for all /api paths
-                .allowedOrigins("http://localhost:3000","http://34.68.235.166") // Allow requests from our React app
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS"); // Allow specific HTTP methods
+        registry.addMapping("/api/**")
+                .allowedOrigins(
+                    "http://localhost:3000",
+                    "http://localhost",
+                    "http://127.0.0.1",
+                    "http://35.226.182.20",
+                    "https://35.226.182.20"
+                )
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")         // ✅ allow all headers
+                .allowCredentials(true);     // ✅ if cookies or auth are used
     }
 }

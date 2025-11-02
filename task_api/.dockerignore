@@ -1,0 +1,12 @@
+# Ignore build outputs and VCS
+**/target/
+.git/
+.idea/
+.vscode/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Node-related (not used here, but safe)
+node_modules/

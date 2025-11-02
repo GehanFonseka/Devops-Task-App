@@ -1,18 +1,24 @@
-version: '3.8'
 services:
   backend:
     build: ./task_api
     container_name: task-backend
+    restart: unless-stopped
     ports:
       - "8080:8080"
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
   frontend:
     build: ./task-frontend
     container_name: task-frontend
     depends_on:
       - backend
+    restart: unless-stopped
     ports:
       - "80:80"
     networks:

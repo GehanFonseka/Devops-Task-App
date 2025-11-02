@@ -1,23 +1,18 @@
-# Corrected Dockerfile (inside task_api folder)
-
-# Stage 1: Build the application
+# Stage 1: Build the Spring Boot application
 FROM eclipse-temurin:17-jdk-jammy AS build
 WORKDIR /workspace
 
-# 1. CRITICAL FIX: Reference the files using the task_api/ path, 
-# even though the Dockerfile is inside the task_api folder.
-# This assumes your docker-compose context is the project root.
+# The build context is Devops-Task-App/task_api
+# The actual Maven project is nested in ./task_api
 COPY task_api/pom.xml ./
 COPY task_api/mvnw ./
 COPY task_api/.mvn .mvn
-
-# 2. CRITICAL FIX: Copy the source files
-COPY task_api/src ./src 
+COPY task_api/src ./src
 
 RUN chmod +x mvnw
 RUN ./mvnw -B -DskipTests package
 
-# Stage 2: Create the final, lightweight image
+# Stage 2: Run the application with a slim JRE image
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 EXPOSE 8080

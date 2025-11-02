@@ -1,0 +1,13 @@
+# Ignore node install and build outputs
+node_modules/
+build/
+
+# VCS and editor
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
