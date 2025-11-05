@@ -272,25 +272,7 @@ body {
   background: #f8fafc;
 }
 
-.task-item.completed .task-title {
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--completed-color);
-}
-
-/* Enhanced Checkbox - Minimal */
-.task-checkbox {
-  margin-right: 14px;
-  width: 20px;
-  height: 20px;
-  accent-color: var(--secondary-color);
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.task-checkbox:hover {
-  transform: scale(1.1);
-}
+/* Removed line-through decoration from completed tasks */
 
 .task-title {
   flex: 1;
