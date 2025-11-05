@@ -15,9 +15,11 @@ concurrency:
 
 jobs:
   build-and-push:
+    name: Build & Push Docker Images
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
@@ -26,76 +28,66 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push backend
+      - name: Build & Push Backend Image
         run: |
           docker build -t $BACKEND_IMAGE:$IMAGE_TAG -t $BACKEND_IMAGE:latest ./task_api
           docker push $BACKEND_IMAGE:$IMAGE_TAG
           docker push $BACKEND_IMAGE:latest
 
-      - name: Build and push frontend
+      - name: Build & Push Frontend Image
         run: |
           docker build -t $FRONTEND_IMAGE:$IMAGE_TAG -t $FRONTEND_IMAGE:latest ./task-frontend
           docker push $FRONTEND_IMAGE:$IMAGE_TAG
           docker push $FRONTEND_IMAGE:latest
 
   deploy:
+    name: Deploy to Google Kubernetes Engine
     needs: build-and-push
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout (k8s manifests)
+      - name: Checkout Kubernetes Manifests
         uses: actions/checkout@v4
 
-      - name: Auth to Google Cloud
+      - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY}}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up gcloud + kubectl
+      - name: Set Up gcloud and kubectl
         uses: google-github-actions/setup-gcloud@v2
         with:
           install_components: 'gke-gcloud-auth-plugin,kubectl'
 
-      - name: Get GKE credentials
+      - name: Get GKE Credentials
         uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: ${{ secrets.GKE_CLUSTER }}
           location: ${{ secrets.GKE_LOCATION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Apply Kubernetes manifests
-        run: |
-          kubectl apply -f k8s/
+      - name: Apply Kubernetes Manifests
+        run: kubectl apply -f k8s/
 
-      - name: Update images to immutable tag
+      - name: Update Deployments with New Images
         run: |
-          # Update deployments to use the freshly built images tagged with the commit SHA
           kubectl set image deployment/task-backend backend=$BACKEND_IMAGE:$IMAGE_TAG --record
           kubectl set image deployment/task-frontend frontend=$FRONTEND_IMAGE:$IMAGE_TAG --record
 
-      - name: Force rollout (safety)
+      - name: Force Rollout (if unchanged)
         run: |
-          # If the image tag was identical for some reason, force a rollout to pick up latest
           kubectl rollout restart deployment/task-backend || true
           kubectl rollout restart deployment/task-frontend || true
 
-      - name: Wait for rollout
+      - name: Wait for Successful Rollout
         run: |
-          echo "⏳ Waiting up to 5 minutes for backend rollout..."
-          kubectl rollout status deployment/task-backend --timeout=300s || (kubectl describe deployment task-backend && exit 1)
-          echo "✅ Backend rolled out successfully."
+          echo "Waiting for backend rollout..."
+          kubectl rollout status deployment/task-backend --timeout=300s
+          echo "Backend deployed successfully!"
 
-          echo "⏳ Waiting up to 5 minutes for frontend rollout..."
-          kubectl rollout status deployment/task-frontend --timeout=300s || (kubectl describe deployment task-frontend && exit 1)
-          echo "✅ Frontend rolled out successfully."   
+          echo "Waiting for frontend rollout..."
+          kubectl rollout status deployment/task-frontend --timeout=300s
+          echo "Frontend deployed successfully!"
 
-
-      - name: Show ingress
-        run: |
-          kubectl get ingress -o wide
-
-## Secrets required (configure in repo settings -> Secrets and variables -> Actions)
-## - DOCKER_USERNAME, DOCKER_PASSWORD
-## - GCP_SA_KEY (JSON of a service account with roles/container.admin + viewer on the project)
-## - GCP_PROJECT (e.g., my-gcp-project)
-## - GKE_CLUSTER (e.g., my-cluster)
-## - GKE_LOCATION (e.g., us-central1 or us-central1-a)
+      - name: Display Ingress Details
+        run: kubectl get ingress -o wide
