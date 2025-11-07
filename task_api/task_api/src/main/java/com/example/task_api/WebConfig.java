@@ -17,7 +17,10 @@ public class WebConfig implements WebMvcConfigurer {
                     "http://127.0.0.1",
                     "http://35.226.182.20",
                     "http://34.120.238.124",
-                    "https://35.226.182.20"
+                    "https://35.226.182.20",
+                    "http://taskpro-gehan.me",
+                    "https://taskpro-gehan.me",
+                    "https://www.taskpro-gehan.me"
 
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
