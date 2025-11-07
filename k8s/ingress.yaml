@@ -24,3 +24,10 @@ spec:
                 name: task-frontend
                 port:
                   number: 80
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: task-backend
+                port:
+                  number: 8080
