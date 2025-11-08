@@ -2,42 +2,590 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon_taskpro.png" type="image/png" />
+    <link rel="shortcut icon" href="%PUBLIC_URL%/favicon_taskpro.png" type="image/png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0f172a" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="TaskPro - Modern Task Management Application"
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon_taskpro.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+    <title>TaskPro - Task Management</title>
+    
+    <!-- Professional Splash Screen Styles -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>Task App</title>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 35%, #334155 70%, #475569 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Animated background blobs */
+        .splash-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.12;
+            animation: float 10s ease-in-out infinite;
+        }
+
+        .splash-blob-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.4), transparent);
+            top: -15%;
+            left: -10%;
+        }
+
+        .splash-blob-2 {
+            width: 450px;
+            height: 450px;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.3), transparent);
+            bottom: -10%;
+            right: -8%;
+            animation-delay: 3s;
+        }
+
+        .splash-blob-3 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(2, 132, 199, 0.25), transparent);
+            top: 35%;
+            right: 15%;
+            animation-delay: 6s;
+        }
+
+        @keyframes float {
+            0%, 100% { 
+                transform: translate(0, 0) scale(1); 
+            }
+            25% { 
+                transform: translate(40px, -40px) scale(1.08); 
+            }
+            50% { 
+                transform: translate(-30px, 30px) scale(0.95); 
+            }
+            75% { 
+                transform: translate(20px, -20px) scale(1.05); 
+            }
+        }
+
+        /* Logo container with entrance animation */
+        .splash-logo-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Professional app icon with glow effect */
+        .splash-app-icon {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 32px;
+            background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 50%, #0284c7 100%);
+            border-radius: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 
+                0 20px 60px rgba(14, 165, 233, 0.5),
+                0 0 80px rgba(56, 189, 248, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            animation: iconPulse 3s ease-in-out infinite;
+            font-size: 72px;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Shimmer effect on icon */
+        .splash-app-icon::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(255, 255, 255, 0.3) 50%,
+                transparent 70%
+            );
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        @keyframes iconPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 
+                    0 20px 60px rgba(14, 165, 233, 0.5),
+                    0 0 80px rgba(56, 189, 248, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 
+                    0 25px 70px rgba(14, 165, 233, 0.7),
+                    0 0 100px rgba(56, 189, 248, 0.5);
+            }
+        }
+
+        /* Brand name with gradient */
+        .splash-brand-name {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #f8fafc;
+            letter-spacing: -1.5px;
+            margin-bottom: 16px;
+            text-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.4),
+                0 0 40px rgba(56, 189, 248, 0.2);
+            animation: textGlow 2s ease-in-out infinite;
+        }
+
+        .splash-brand-name .highlight {
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9, #0284c7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(56, 189, 248, 0.8);
+        }
+
+        @keyframes textGlow {
+            0%, 100% {
+                text-shadow: 
+                    0 4px 20px rgba(0, 0, 0, 0.4),
+                    0 0 40px rgba(56, 189, 248, 0.2);
+            }
+            50% {
+                text-shadow: 
+                    0 4px 20px rgba(0, 0, 0, 0.4),
+                    0 0 60px rgba(56, 189, 248, 0.4);
+            }
+        }
+
+        /* Tagline with subtle animation */
+        .splash-tagline {
+            font-size: 1.25rem;
+            color: rgba(248, 250, 252, 0.85);
+            font-weight: 600;
+            margin-bottom: 56px;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease-out 0.3s forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================ */
+        /* PROFESSIONAL LOADER - OPTION 1: Progress Bar */
+        /* ============================================ */
+        .splash-loading-container {
+            position: relative;
+            width: 320px;
+            margin-top: 24px;
+        }
+
+        /* Animated progress bar with smooth gradient */
+        .splash-progress-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .splash-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, 
+                #38bdf8 0%, 
+                #0ea5e9 25%, 
+                #0284c7 50%, 
+                #0ea5e9 75%, 
+                #38bdf8 100%
+            );
+            background-size: 200% 100%;
+            border-radius: 12px;
+            animation: 
+                progressGrow 3s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+                gradientShift 2s linear infinite;
+            box-shadow: 
+                0 0 20px rgba(56, 189, 248, 0.6),
+                0 0 40px rgba(56, 189, 248, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Shimmer effect on progress bar */
+        .splash-progress-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.4) 50%,
+                transparent 100%
+            );
+            animation: progressShimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes progressGrow {
+            0% { width: 0%; }
+            50% { width: 80%; }
+            100% { width: 0%; }
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 200% 0%; }
+        }
+
+        @keyframes progressShimmer {
+            0% { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        /* ============================================ */
+        /* PROFESSIONAL LOADER - OPTION 2: Spinning Dots */
+        /* ============================================ */
+        .splash-dots-loader {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 32px;
+        }
+
+        .splash-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+            animation: dotPulse 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+        }
+
+        .splash-dot:nth-child(1) { animation-delay: 0s; }
+        .splash-dot:nth-child(2) { animation-delay: 0.2s; }
+        .splash-dot:nth-child(3) { animation-delay: 0.4s; }
+        .splash-dot:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes dotPulse {
+            0%, 80%, 100% {
+                transform: scale(0.6);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* ============================================ */
+        /* PROFESSIONAL LOADER - OPTION 3: Spinner */
+        /* ============================================ */
+        .splash-spinner-loader {
+            width: 48px;
+            height: 48px;
+            margin: 32px auto 0;
+            position: relative;
+        }
+
+        .splash-spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-top-color: #38bdf8;
+            border-right-color: #0ea5e9;
+            border-radius: 50%;
+            animation: spinnerRotate 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+        }
+
+        .splash-spinner-ring:nth-child(2) {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-top-color: #0ea5e9;
+            border-right-color: #0284c7;
+            animation-duration: 1.6s;
+            animation-direction: reverse;
+        }
+
+        @keyframes spinnerRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Loading text with smooth fade */
+        .splash-loading-text {
+            margin-top: 24px;
+            color: rgba(248, 250, 252, 0.75);
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            animation: textFade 2s ease-in-out infinite;
+        }
+
+        @keyframes textFade {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Smooth fade out animation */
+        .splash-fade-out {
+            animation: fadeOutScale 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeOutScale {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+        }
+
+        /* Hide root during splash */
+        #root {
+            opacity: 0;
+            transition: opacity 0.6s ease-in;
+        }
+
+        #root.ready {
+            opacity: 1;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .splash-app-icon {
+                width: 110px;
+                height: 110px;
+                border-radius: 26px;
+                font-size: 56px;
+            }
+
+            .splash-brand-name {
+                font-size: 2.75rem;
+            }
+
+            .splash-tagline {
+                font-size: 1rem;
+            }
+
+            .splash-loading-container {
+                width: 260px;
+            }
+
+            .splash-blob-1, .splash-blob-2, .splash-blob-3 {
+                width: 300px;
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .splash-brand-name {
+                font-size: 2.25rem;
+            }
+
+            .splash-tagline {
+                font-size: 0.9rem;
+                margin-bottom: 40px;
+            }
+
+            .splash-loading-container {
+                width: 220px;
+            }
+        }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <!-- Professional Splash Screen -->
+    <div id="splash-screen">
+        <div class="splash-blob splash-blob-1"></div>
+        <div class="splash-blob splash-blob-2"></div>
+        <div class="splash-blob splash-blob-3"></div>
+        
+        <div class="splash-logo-container">
+            <div class="splash-app-icon">✓</div>
+            
+            <div class="splash-brand-name">
+                Task<span class="highlight">Pro</span>
+            </div>
+            
+            <div class="splash-tagline">
+                Modern Task Management
+            </div>
+            
+            <!-- OPTION 1: Smooth Progress Bar (ACTIVE) -->
+            <div class="splash-loading-container">
+                <div class="splash-progress-track">
+                    <div class="splash-progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- OPTION 2: Pulsing Dots (UNCOMMENT TO USE) -->
+            <!-- <div class="splash-dots-loader">
+                <div class="splash-dot"></div>
+                <div class="splash-dot"></div>
+                <div class="splash-dot"></div>
+                <div class="splash-dot"></div>
+            </div> -->
+
+            <!-- OPTION 3: Dual Spinner (UNCOMMENT TO USE) -->
+            <!-- <div class="splash-spinner-loader">
+                <div class="splash-spinner-ring"></div>
+                <div class="splash-spinner-ring"></div>
+            </div> -->
+            
+            <div class="splash-loading-text">Initializing workspace...</div>
+        </div>
+    </div>
+    
+    <!-- React App Root -->
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+    
+    <!-- Enhanced Splash Screen Control Script -->
+    <script>
+        (function() {
+            'use strict';
+            
+            const splash = document.getElementById('splash-screen');
+            const root = document.getElementById('root');
+            
+            // Minimum display time set to 3 seconds
+            const MIN_DISPLAY_TIME = 3000;
+            const MAX_WAIT_TIME = 8000;
+            const startTime = Date.now();
+            
+            let hasHidden = false;
+            
+            function hideSplash() {
+                if (hasHidden) return;
+                hasHidden = true;
+                
+                const elapsed = Date.now() - startTime;
+                const remainingTime = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+                
+                setTimeout(function() {
+                    // Add fade out animation
+                    splash.classList.add('splash-fade-out');
+                    
+                    // Show root content
+                    root.classList.add('ready');
+                    
+                    // Remove splash after animation completes
+                    setTimeout(function() {
+                        splash.style.display = 'none';
+                    }, 1000); // Match fadeOutScale animation duration
+                }, remainingTime);
+            }
+            
+            // Check if React has fully rendered
+            function checkReactReady() {
+                // Wait for root to have content AND Dashboard to be mounted
+                if (root && root.children.length > 0) {
+                    const appContent = root.querySelector('.app-bg');
+                    const dashboard = root.querySelector('.dashboard-container');
+                    
+                    // Ensure BOTH are mounted (Dashboard is default page now)
+                    if (appContent && dashboard) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            // Poll for React readiness
+            const checkInterval = setInterval(function() {
+                if (checkReactReady()) {
+                    clearInterval(checkInterval);
+                    hideSplash();
+                }
+            }, 100);
+            
+            // Fallback: hide after maximum wait time
+            setTimeout(function() {
+                clearInterval(checkInterval);
+                hideSplash();
+            }, MAX_WAIT_TIME);
+            
+            // Also listen for window load as backup
+            window.addEventListener('load', function() {
+                setTimeout(function() {
+                    if (checkReactReady()) {
+                        clearInterval(checkInterval);
+                        hideSplash();
+                    }
+                }, 500);
+            });
+        })();
+    </script>
   </body>
 </html>
