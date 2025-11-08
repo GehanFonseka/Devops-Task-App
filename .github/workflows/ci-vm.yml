@@ -4,13 +4,6 @@ on:
   push:
     branches: [ main ]
 
-env:
-  BACKEND_IMAGE: gehanfonseka/devops-task-backend:latest
-  FRONTEND_IMAGE: gehanfonseka/devops-task-frontend:latest
-  VM_HOST: 34.28.207.36
-  VM_USER: gehan
-  DEPLOY_PATH: /var/www/task-app/Devops-Task-App
-
 jobs:
   build-and-push:
     name: Build & Push Docker Images
@@ -28,13 +21,13 @@ jobs:
 
       - name: Build & Push Backend Image
         run: |
-          docker build -t $BACKEND_IMAGE ./task_api
-          docker push $BACKEND_IMAGE
+          docker build -t ${{ secrets.BACKEND_IMAGE }} ./task_api
+          docker push ${{ secrets.BACKEND_IMAGE }}
 
       - name: Build & Push Frontend Image
         run: |
-          docker build -t $FRONTEND_IMAGE ./task-frontend
-          docker push $FRONTEND_IMAGE
+          docker build -t ${{ secrets.FRONTEND_IMAGE }} ./task-frontend
+          docker push ${{ secrets.FRONTEND_IMAGE }}
 
   deploy:
     name: Deploy to VM
@@ -51,16 +44,19 @@ jobs:
           ssh-private-key: ${{ secrets.VM_SSH_KEY }}
 
       - name: Add VM Host to Known Hosts
-        run: ssh-keyscan -H $VM_HOST >> ~/.ssh/known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Transfer Docker Compose File
-        run: scp ./docker-compose.yml $VM_USER@$VM_HOST:$DEPLOY_PATH/docker-compose.yml
+        run: scp ./docker-compose.yml ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.DEPLOY_PATH }}/docker-compose.yml
 
       - name: Deploy Application
         run: |
-          ssh $VM_USER@$VM_HOST << 'ENDSSH'
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'ENDSSH'
             set -e
-            cd /var/www/task-app/Devops-Task-App
+            cd ${{ secrets.DEPLOY_PATH }}
             
             echo "Stopping existing containers..."
             docker compose down || true
