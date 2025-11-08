@@ -9,6 +9,7 @@ const TaskList = () => {
     const [newTitle, setNewTitle] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [editingTitle, setEditingTitle] = useState('');
+    const [filter, setFilter] = useState('all');
 
     // Build API base once
     const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -96,73 +97,217 @@ const TaskList = () => {
         }
     };
 
-    if (loading) return <div className="status-message status-loading">Loading tasks...</div>;
-    if (error) return <div className="status-message status-error">Error: {error}</div>;
+    const clearCompleted = async () => {
+        try {
+            const completedIds = tasks.filter(t => t.completed).map(t => t.id);
+            await Promise.all(completedIds.map(id => api.delete(`/tasks/${id}`)));
+            setTasks(prev => prev.filter(t => !t.completed));
+        } catch (e) {
+            setError(e.message || 'Failed to clear completed tasks');
+        }
+    };
 
-        const total = tasks.length;
-        const done = tasks.filter(t => t.completed).length;
+    // Filter tasks
+    const filteredTasks = tasks.filter(task => {
+        if (filter === 'active') return !task.completed;
+        if (filter === 'completed') return task.completed;
+        return true;
+    });
+
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.completed).length;
+    const active = total - completed;
+
+    if (loading) {
+        return (
+            <div className="task-list-container">
+                <div className="loading-state">
+                    <div className="loading-spinner"></div>
+                    <p>Loading your tasks...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="task-list-container">
+                <div className="error-state">
+                    <span className="error-icon">⚠️</span>
+                    <h3>Oops! Something went wrong</h3>
+                    <p>{error}</p>
+                    <button className="btn btn-primary" onClick={fetchTasks}>Try Again</button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="task-list-container">
-                <div className="card-header">
-                    <div>
-                        <h1>My Tasks</h1>
-                        <div className="subtitle">{done}/{total} completed</div>
-                    </div>
+            {/* Header Section - SIMPLIFIED */}
+            <div className="task-header">
+                <div className="header-content">
+                    <h1>My Tasks</h1>
+                    <p className="task-subtitle">Organize and manage your daily tasks</p>
                 </div>
+            </div>
 
-            <form className="task-toolbar" onSubmit={handleAdd}>
-                <input
-                    type="text"
-                    placeholder="Add a new task..."
-                    className="task-input"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                />
-                        <button type="submit" className="btn btn-primary">Add</button>
-                <div className="spacer" />
-                <button type="button" className="btn btn-secondary" onClick={markAllCompleted}>
-                    Mark all completed
-                </button>
-            </form>
-
-            <ul className="task-list">
-                {tasks.map(task => (
-                    <li key={task.id} className={`task-item ${task.completed ? 'completed' : ''}`}>
+            {/* Add Task Form */}
+            <div className="add-task-section">
+                <form className="add-task-form" onSubmit={handleAdd}>
+                    <div className="input-wrapper">
+                        <span className="input-icon">➕</span>
                         <input
-                            type="checkbox"
-                            checked={task.completed}
-                            onChange={() => toggleCompleted(task)}
-                            className="task-checkbox"
+                            type="text"
+                            placeholder="What needs to be done?"
+                            className="task-input-modern"
+                            value={newTitle}
+                            onChange={(e) => setNewTitle(e.target.value)}
                         />
-                        {editingId === task.id ? (
-                            <input
-                                className="task-input-inline"
-                                value={editingTitle}
-                                onChange={(e) => setEditingTitle(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(task); if (e.key === 'Escape') cancelEdit(); }}
-                                autoFocus
-                            />
-                        ) : (
-                            <span className="task-title">{task.title}</span>
-                        )}
+                    </div>
+                    <button type="submit" className="btn btn-primary btn-add">
+                        <span className="btn-icon">+</span>
+                        Add Task
+                    </button>
+                </form>
+            </div>
 
-                        <div className="task-actions">
-                            {editingId === task.id ? (
-                                <>
-                                    <button className="btn btn-primary btn-sm" type="button" onClick={() => saveEdit(task)}>Save</button>
-                                    <button className="btn btn-light btn-sm" type="button" onClick={cancelEdit}>Cancel</button>
-                                </>
-                            ) : (
-                                <>
-                                    <button className="btn btn-light btn-sm" type="button" onClick={() => startEdit(task)}>Edit</button>
-                                    <button className="btn btn-danger btn-sm" type="button" onClick={() => handleDelete(task)}>Delete</button>
-                                </>
-                            )}
+            {/* Filter Tabs */}
+            <div className="filter-tabs">
+                <button 
+                    className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilter('all')}
+                >
+                    All Tasks <span className="tab-count">{total}</span>
+                </button>
+                <button 
+                    className={`filter-tab ${filter === 'active' ? 'active' : ''}`}
+                    onClick={() => setFilter('active')}
+                >
+                    Active <span className="tab-count">{active}</span>
+                </button>
+                <button 
+                    className={`filter-tab ${filter === 'completed' ? 'active' : ''}`}
+                    onClick={() => setFilter('completed')}
+                >
+                    Completed <span className="tab-count">{completed}</span>
+                </button>
+            </div>
+
+            {/* Tasks List */}
+            {filteredTasks.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-icon">
+                        {filter === 'all' && '📝'}
+                        {filter === 'active' && '🎯'}
+                        {filter === 'completed' && '🎉'}
+                    </div>
+                    <h3>
+                        {filter === 'all' && 'No tasks yet'}
+                        {filter === 'active' && 'No active tasks'}
+                        {filter === 'completed' && 'No completed tasks'}
+                    </h3>
+                    <p>
+                        {filter === 'all' && 'Create your first task to get started'}
+                        {filter === 'active' && 'All tasks are completed! Great job!'}
+                        {filter === 'completed' && 'Complete some tasks to see them here'}
+                    </p>
+                </div>
+            ) : (
+                <div className="tasks-list">
+                    {filteredTasks.map(task => (
+                        <div key={task.id} className={`task-card ${task.completed ? 'task-completed' : ''}`}>
+                            <div className="task-checkbox-wrapper">
+                                <input
+                                    type="checkbox"
+                                    id={`task-${task.id}`}
+                                    checked={task.completed}
+                                    onChange={() => toggleCompleted(task)}
+                                    className="task-checkbox-modern"
+                                />
+                                <label htmlFor={`task-${task.id}`} className="checkbox-label"></label>
+                            </div>
+
+                            <div className="task-content">
+                                {editingId === task.id ? (
+                                    <input
+                                        className="task-edit-input"
+                                        value={editingTitle}
+                                        onChange={(e) => setEditingTitle(e.target.value)}
+                                        onKeyDown={(e) => { 
+                                            if (e.key === 'Enter') saveEdit(task); 
+                                            if (e.key === 'Escape') cancelEdit(); 
+                                        }}
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <span className="task-text">{task.title}</span>
+                                )}
+                            </div>
+
+                            <div className="task-actions-modern">
+                                {editingId === task.id ? (
+                                    <>
+                                        <button 
+                                            className="action-btn action-save" 
+                                            onClick={() => saveEdit(task)}
+                                            title="Save"
+                                        >
+                                            ✓
+                                        </button>
+                                        <button 
+                                            className="action-btn action-cancel" 
+                                            onClick={cancelEdit}
+                                            title="Cancel"
+                                        >
+                                            ✕
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button 
+                                            className="action-btn action-edit" 
+                                            onClick={() => startEdit(task)}
+                                            title="Edit task"
+                                        >
+                                            ✎
+                                        </button>
+                                        <button 
+                                            className="action-btn action-delete" 
+                                            onClick={() => handleDelete(task)}
+                                            title="Delete task"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </li>
-                ))}
-            </ul>
+                    ))}
+                </div>
+            )}
+
+            {/* Bulk Actions */}
+            {total > 0 && (
+                <div className="bulk-actions">
+                    <button 
+                        className="bulk-btn"
+                        onClick={markAllCompleted}
+                        disabled={completed === total}
+                    >
+                        <span className="bulk-icon">✓</span>
+                        Mark All Complete
+                    </button>
+                    <button 
+                        className="bulk-btn bulk-clear"
+                        onClick={clearCompleted}
+                        disabled={completed === 0}
+                    >
+                        <span className="bulk-icon">🗑️</span>
+                        Clear Completed
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
