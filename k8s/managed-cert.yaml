@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: taskprogehan-cert
+spec:
+  domains:
+    - taskprogehan.app
+    - api.taskprogehan.app

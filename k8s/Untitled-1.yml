@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: task-app-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: "taskprogehan-cert"
+    kubernetes.io/ingress.allow-http: "true"
+spec:
+  rules:
+  - host: api.taskprogehan.app
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: task-backend
+            port:
+              number: 8080
+      - path: /actuator
+        pathType: Prefix
+        backend:
+          service:
+            name: task-backend
+            port:
+              number: 8080
+
+  - host: taskprogehan.app
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: task-frontend
+            port:
+              number: 80

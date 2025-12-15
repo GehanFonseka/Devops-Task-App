@@ -17,7 +17,7 @@ spec:
           image: gehanfonseka/devops-task-backend:latest
           ports:
             - containerPort: 8080
-          readinessProbe:                # <-- MUST BE INSIDE container
+          readinessProbe:                
             httpGet:
               path: /actuator/health
               port: 8080
